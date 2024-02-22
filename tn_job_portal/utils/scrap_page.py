@@ -2,6 +2,7 @@ import logging
 import requests
 
 def scrapper(name,page_url):
+    print("scrapper",name,page_url)
     logging.info(f"scrapping {page_url}")
     sess = requests.session()
     page = sess.get(page_url)

@@ -2,27 +2,34 @@ from utils.scrap_page import scrapper
 from utils.regex import job_url_scrap,scrap_job_pages
 import os
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, wait
+from queue import Queue, Empty
 
 
 def indi_job_desc():
     dirs = os.listdir("./pages/job_listing")
-    page_list = []
+    data_queue = Queue()
     for page in dirs:
-        print(page)
-        with open(f'pages/job_listing/{page}','r',encoding="utf8") as indi_page:
-            indi_page_content = indi_page.read()
-        for all_jobs in job_url_scrap(indi_page_content):
-            print(all_jobs)
-            # scrapper(f'individual_jobs/{total_job}',all_jobs[0])
-            # total_job = total_job+1
-        executor = ThreadPoolExecutor(max_workers=5)
-        futures = {executor.submit(scrapper, website[-1:-6],website): website for website in all_jobs}
-        
-        for future in as_completed(futures):
-            future()
-
+        #print(page)
+        data_queue.put(page)
     
+    print(data_queue.qsize())
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(_worker,data_queue) for _ in range(10)]
+        wait(futures,timeout=None)
+
+def _worker(data_queue):
+    while True:
+        try:
+            page = data_queue.get_nowait()
+            print(page)
+            with open(f'pages/job_listing/{page}','r',encoding="utf8") as indi_page:
+                indi_page_content = indi_page.read()
+                for all_jobs in job_url_scrap(indi_page_content):
+                    name = all_jobs[-5::]
+                    scrapper(f'individual_jobs/{name}',all_jobs)
+        except Empty:
+            break
 
 def particular_job_desc():
     dirs = os.listdir("./pages/individual_jobs")
